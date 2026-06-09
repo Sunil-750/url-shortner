@@ -20,18 +20,6 @@ counter = 2383280
 # Base62 alphabet
 BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-# Sequential counter starting at 2,383,280 (10 * 62^3) to generate codes starting with 'a'
-counter = 2383280
-
-# Base62 alphabet
-BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-# Sequential counter starting at 2,383,280 (10 * 62^3) to generate codes starting with 'a'
-counter = 2383280
-
-# Base62 alphabet
-BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
 
 class ShortenRequest(BaseModel):
     """Request model for shortening a URL"""
