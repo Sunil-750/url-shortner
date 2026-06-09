@@ -1,86 +1,74 @@
-**Short URL Service — SRS (condensed)**
+**Basic URL Shortener Service — SRS**
 
-Project: URL Shortener
-Location: `/Users/sunilsahu/Desktop/Code/Paytm/url-shortner`
-Objective: Convert long URLs to short, URL-safe codes and redirect visitors to originals.
+Project: Basic URL Shortener
+Objective: Simple API to shorten long URLs and retrieve them using generated short codes. In-memory storage only.
 
 Purpose
-- Provide a concise, implementable specification covering API, storage, validation, short-code generation, custom aliases, duplicate handling, and operational concerns.
+- Provide a minimal specification for a basic URL shortening service with simple API endpoints and in-memory storage.
 
 Scope
-- In-scope: `POST /shorten`, `GET /{code}`, persistent mappings, custom aliases, 301 redirects, URL validation, deterministic duplicate handling.
-- Out-of-scope: authentication, analytics UI, bulk import/export, advanced spam detection.
+- In-scope: `POST /shorten`, `GET /{code}`, in-memory mappings, URL validation.
+- Out-of-scope: persistent database, custom aliases, authentication, rate limiting, analytics, caching layers, scalability optimization.
 
 Key Definitions
-- Short code: short URL-safe identifier (e.g., `b9Xy2A`).
-- Custom alias: user-specified `code` (e.g., `sale-2026`).
-- Base62: `0-9A-Za-z` character set.
+- Short code: generated URL-safe identifier (e.g., `abc123`).
+- In-memory storage: dictionary/hash map stored in application memory.
 
-Functional Requirements (summary)
-- POST /shorten
-  - Request JSON: `{ "url": "<absolute-url>", "alias": "optional", "force_new": false }`.
-  - Validate URL (http/https), alias charset (`[A-Za-z0-9-_]`) and length (3–100), max URL length 2048.
-  - If `alias` provided: try atomic insert; on success return 201 with the alias; on unique violation return 409.
-  - If no alias: canonicalize URL, if existing mapping found return that code (idempotent), else create new mapping and return 201 with generated code. `force_new=true` overrides idempotency.
-- GET /{code}
-  - If mapping exists return `301` with `Location: <original_url>`; else `404` with `{ "error": "code_not_found" }`.
+API Endpoints
 
-Duplicate URL Policy
-- Default: idempotent — same canonical URL returns existing code. Optionally `force_new` to create another.
+**POST /shorten**
+- Request: `{ "url": "https://example.com/very/long/url" }`
+- Validate: URL must start with `http://` or `https://`; max length 2048 characters.
+- Generate: Random 6-character alphanumeric code.
+- Response (201):
+  ```json
+  {
+    "short_code": "abc123",
+    "original_url": "https://example.com/very/long/url"
+  }
+  ```
+- Error (400): `{ "error": "invalid_url" }` if URL is invalid.
+
+**GET /{code}**
+- If code exists: Redirect (301) to original URL.
+- If code not found (404): `{ "error": "code_not_found" }`
 
 Data Model
-- Datastore: PostgreSQL (primary) + Redis (optional cache).
-- Table `urls` (suggested):
-  - `id` bigserial PK
-  - `code` text UNIQUE NOT NULL
-  - `original_url` text NOT NULL
-  - `created_at` timestamptz DEFAULT now()
-  - `owner` nullable
-  - `clicks` bigint DEFAULT 0
-  - Indexes: unique on `code`; index on `original_url` for duplicate lookup.
+- Datastore: In-memory Python dictionary
+  - Key: `short_code` (string)
+  - Value: `original_url` (string)
+- No persistence; data lost on application restart.
 
-Short-code Generator
-- Approach: DB sequence id → Base62 encoding.
-  - Flow: INSERT (RETURNING id) → encode id to Base62 → update `code` (or compute from sequence before insert).
-  - Rationale: deterministic, simple, collision-free because DB sequence guarantees unique ids; Base62 yields URL-safe compact codes.
-  - Capacity: 6 chars ≈ 62^6 ≈ 57B codes; variable length is fine.
-  - Concurrency: DB sequence and unique constraint prevent collisions under concurrent writes.
-- Alternate: UUID/hash (longer, collision risk if truncated).
+Short-code Generation
+- Approach: Random 6-character alphanumeric code.
+- Alphabet: `0-9`, `a-z`, `A-Z` (62 characters).
+- Algorithm: Generate random code, check for collisions in dictionary, retry if collision found.
+- Collision handling: Re-generate if code already exists (extremely rare).
 
-URL Validation & Canonicalization
-- Validate: absolute URL with `http`/`https`; reject `file:`, `data:`, `javascript:`; enforce max length.
-- Canonicalize before duplicate-detection: lowercase host, remove default ports, trim whitespace. Sorting query params is optional (configurable) because it can change semantics.
+URL Validation
+- Validate: absolute URL with `http://` or `https://` protocol.
+- Check: URL length ≤ 2048 characters.
+- Library: `urllib.parse` for parsing.
 
-Scenarios (condensed)
-- Happy path: POST a valid URL → insert → id→Base62 `dnh` → GET `/dnh` → 301 to original.
-- Custom alias success: POST with alias `sale-2026` → atomic insert → 201 → GET `/sale-2026` → 301.
-- Alias conflict: POST with taken alias → 409 `{ "error":"alias_taken" }`.
-- Duplicate shorten: repost same canonical URL → return existing code (no new record) unless `force_new`.
-- Invalid URL: return 400 `{ "error":"invalid_url" }`.
-- Unknown code: GET unknown → 404.
-- Concurrency: DB sequence ensures uniqueness.
+Scenarios
+- Happy path: `POST /shorten` with valid URL → generate code → return 201.
+- Redirect: `GET /abc123` → redirect to original URL with 301.
+- Invalid URL: `POST /shorten` with malformed URL → return 400.
+- Unknown code: `GET /invalid` → return 404.
 
 Error Codes
-- 201 Created, 200 OK (optional for existing mapping), 301 Redirect, 400 Bad Request, 404 Not Found, 409 Conflict, 429 Rate-limited, 500 Server error.
+- 201 Created
+- 301 Permanent Redirect
+- 400 Bad Request
+- 404 Not Found
+- 500 Server Error
 
-Security & Operational Notes
-- TLS required; rate-limit `POST /shorten` (per-IP, per-key); input sanitization; log safely (avoid PII).
-- Monitor creation rate, errors, redirect latency; backup Postgres and test restores.
-- Mitigate open-redirect abuse with heuristics/whitelists if required.
+Implementation Notes (Python)
+- Framework: **FastAPI** (lightweight, simple routing)
+- HTTP Client: `requests` for testing
+- URL Parsing: `urllib.parse`
+- Testing: `pytest`
+- Storage: Python `dict` in memory
+- No external dependencies for data persistence
 
-Scalability
-- Cache code→URL in Redis to serve redirects quickly; scale app instances horizontally; rely on DB for unique id generation or move to sharded ID generator for extreme scale.
-
-Risks & Trade-offs
-- Sequential ids leak volume (mitigate with salted/offset mapping). Canonicalization may change semantics. Custom aliases can be abused — require moderation.
-
-Implementation Notes & Next Steps
-- Use robust URL parsing library (e.g., `urllib.parse` or `java.net.URI`).
-- Implement minimal server with `POST /shorten` and `GET /{code}`, DB migration SQL, tests for scenarios, Redis caching, and rate-limiting.
-
-Appendix — Base62 (sketch)
-- alphabet: `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`.
-- encode: repeatedly divide id by 62 and map remainders.
-- example flow: `id = INSERT ... RETURNING id; code = base62(id); UPDATE urls SET code=...`.
-
-— End of condensed SRS —
+— End of Basic URL Shortener SRS —
