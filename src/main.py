@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from typing import Dict
 from urllib.parse import urlparse
 
+from src.utils import generate_short_code
+
 app = FastAPI(
     title="URL Shortener",
     description="A simple URL shortening service with in-memory storage",
@@ -13,12 +15,6 @@ app = FastAPI(
 
 # In-memory storage
 url_mapping: Dict[str, str] = {}
-
-# Sequential counter starting at 2,383,280 (10 * 62^3) to generate codes starting with 'a'
-counter = 2383280
-
-# Base62 alphabet
-BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 class ShortenRequest(BaseModel):
@@ -102,41 +98,6 @@ def redirect_to_url(code: str):
     
     original_url = url_mapping[code]
     return RedirectResponse(url=original_url, status_code=301)
-
-
-def encode_base62(num: int) -> str:
-    """
-    Convert a number to Base62 encoding
-    
-    Args:
-        num: Number to encode
-        
-    Returns:
-        Base62 encoded string
-    """
-    if num == 0:
-        return BASE62_ALPHABET[0]
-    
-    encoded = ""
-    while num > 0:
-        encoded = BASE62_ALPHABET[num % 62] + encoded
-        num //= 62
-    
-    return encoded
-
-
-def generate_short_code() -> str:
-    """
-    Generate the next sequential short code using Base62 encoding
-    Starts at counter 2,383,280 to generate codes beginning with 'a'
-    
-    Returns:
-        A Base62 encoded short code
-    """
-    global counter
-    code = encode_base62(counter)
-    counter += 1
-    return code
 
 
 if __name__ == "__main__":

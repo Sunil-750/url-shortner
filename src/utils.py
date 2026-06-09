@@ -3,6 +3,9 @@ from urllib.parse import urlparse
 
 BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+# Sequential counter starting at 2,383,280 (10 * 62^3) to generate codes starting with 'a'
+counter = 2383280
+
 
 def validate_url(url: str) -> bool:
     """
@@ -52,3 +55,17 @@ def encode_base62(num: int) -> str:
         num //= 62
     
     return encoded
+
+
+def generate_short_code() -> str:
+    """
+    Generate the next sequential short code using Base62 encoding
+    Starts at counter 2,383,280 to generate codes beginning with 'a'
+    
+    Returns:
+        A Base62 encoded short code
+    """
+    global counter
+    code = encode_base62(counter)
+    counter += 1
+    return code

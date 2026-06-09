@@ -1,8 +1,8 @@
 """Unit tests for URL shortener API"""
 import pytest
 from fastapi.testclient import TestClient
-from src import main
 from src.main import app, url_mapping
+from src import utils
 
 
 @pytest.fixture
@@ -16,7 +16,7 @@ def clear_storage():
     """Clear in-memory storage before each test"""
     url_mapping.clear()
     # Reset counter to initial value
-    main.counter = 2383280
+    utils.counter = 2383280
     yield
     url_mapping.clear()
 
