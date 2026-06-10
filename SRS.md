@@ -40,7 +40,7 @@ Data Model
 - No persistence; data lost on application restart.
 
 Short-code Generation
-- Approach: Random 6-character alphanumeric code.
+- Approach: 6-character alphanumeric code.
 - Alphabet: `0-9`, `a-z`, `A-Z` (62 characters).
 - Algorithm: Generate random code, check for collisions in dictionary, retry if collision found.
 - Collision handling: Re-generate if code already exists (extremely rare).
