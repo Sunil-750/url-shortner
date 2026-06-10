@@ -1,6 +1,7 @@
 """FastAPI application for URL shortener service"""
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict
 from urllib.parse import urlparse
@@ -11,6 +12,15 @@ app = FastAPI(
     title="URL Shortener",
     description="A simple URL shortening service with in-memory storage",
     version="1.0.0"
+)
+
+# Configure CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # In-memory storage

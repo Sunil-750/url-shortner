@@ -54,6 +54,8 @@ FastAPI provides built-in interactive Swagger UI for testing APIs:
 
 Open `http://localhost:8000/docs` in your browser to test the endpoints directly!
 
+**Note**: You can generate short codes in Swagger UI, but to test the redirect functionality, copy the short code URL (e.g., `http://localhost:8000/abc123`) and paste it directly in your browser's address bar. This is due to browser CORS restrictions on cross-origin redirects.
+
 ## API Endpoints
 
 ### Using Swagger UI (Recommended)
