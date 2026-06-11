@@ -1,14 +1,14 @@
 **Basic URL Shortener Service — SRS**
 
 Project: Basic URL Shortener
-Objective: Simple API to shorten long URLs and retrieve them using generated short codes. In-memory storage only.
+Objective: Simple API to shorten long URLs and retrieve them using generated short codes. MongoDB persistent storage.
 
 Purpose
-- Provide a minimal specification for a basic URL shortening service with simple API endpoints and in-memory storage.
+- Provide a minimal specification for a basic URL shortening service with simple API endpoints and persistent MongoDB storage.
 
 Scope
-- In-scope: `POST /shorten`, `GET /{code}`, in-memory mappings, URL validation.
-- Out-of-scope: persistent database, custom aliases, authentication, rate limiting, analytics, caching layers, scalability optimization.
+- In-scope: `POST /shorten`, `GET /{code}`, MongoDB database for persistent storage, URL validation.
+- Out-of-scope: custom aliases, authentication, rate limiting, analytics, caching layers, scalability optimization.
 
 Key Definitions
 - Short code: generated URL-safe identifier (e.g., `abc123`).
@@ -34,10 +34,18 @@ API Endpoints
 - If code not found (404): `{ "error": "code_not_found" }`
 
 Data Model
-- Datastore: In-memory Python dictionary
-  - Key: `short_code` (string)
-  - Value: `original_url` (string)
-- No persistence; data lost on application restart.
+- Datastore: MongoDB document database
+  - Collection: `urls`
+  - Document Schema:
+    ```json
+    {
+      "short_code": "abc123",
+      "original_url": "https://example.com/very/long/url"
+    }
+    ```
+  - Unique Index: `short_code` (unique constraint for collision prevention)
+- Persistence: Data persisted in MongoDB; survives application restarts.
+- Default Database: `url_shortener`
 
 Short-code Generation
 - Approach: 6-character alphanumeric code.
@@ -65,10 +73,11 @@ Error Codes
 
 Implementation Notes (Python)
 - Framework: **FastAPI** (lightweight, simple routing)
+- Database: **MongoDB** with PyMongo driver
 - HTTP Client: `requests` for testing
 - URL Parsing: `urllib.parse`
 - Testing: `pytest`
-- Storage: Python `dict` in memory
-- No external dependencies for data persistence
+- Storage: MongoDB document-based persistence
+- Connection: Configurable via `MONGODB_URI` environment variable (default: `mongodb://127.0.0.1:27017/`)
 
 — End of Basic URL Shortener SRS —

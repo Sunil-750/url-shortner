@@ -1,12 +1,12 @@
 # url-shortner
 
-A simple, lightweight URL shortening service with basic APIs and in-memory storage.
+A simple, lightweight URL shortening service with basic APIs and MongoDB persistent storage.
 
 ## Features
 
 - Shorten long URLs with auto-generated 6-character codes
 - Redirect from short code to original URL
-- In-memory storage (no database)
+- Persistent MongoDB storage for data durability
 - Minimal dependencies
 - Fast and simple API
 
@@ -14,7 +14,8 @@ A simple, lightweight URL shortening service with basic APIs and in-memory stora
 
 - **Python** 3.8+
 - **FastAPI** - Web framework
-- In-memory dictionary for storage
+- **MongoDB** - NoSQL database for persistent storage
+- **PyMongo** - MongoDB Python driver
 
 ## Quick Start
 
@@ -23,18 +24,33 @@ A simple, lightweight URL shortening service with basic APIs and in-memory stora
 1. **Clone the repository**
    ```bash
    git clone <repo-url>
-   cd url-shortne
+   cd url-shortner
    ```
 
-2. **Create virtual environment**
+2. **Ensure MongoDB is running**
+   ```bash
+   # Using Docker (recommended)
+   docker run -d -p 27017:27017 --name mongodb mongo:latest
+   
+   # OR using local MongoDB installation
+   mongod --dbpath /data/db
+   ```
+
+3. **Create virtual environment**
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Install dependencies**
+4. **Install dependencies**
    ```bash
    pip install -r requirements.txt
+   ```
+
+5. **Configure MongoDB connection (optional)**
+   ```bash
+   # Set custom MongoDB URI if needed (default: mongodb://127.0.0.1:27017/)
+   export MONGODB_URI="mongodb://username:password@host:port/"
    ```
 
 ### Run the Service
@@ -132,9 +148,12 @@ pytest
 url-shortner/
 ├── src/
 │   ├── main.py              # FastAPI application and endpoints
-│   └── utils.py             # Utility functions (e.g., URL validation, code generation)
+│   ├── database.py          # MongoDB connection and CRUD operations
+│   ├── utils.py             # Utility functions (e.g., URL validation, code generation)
+│   └── __init__.py          # Package initialization
 ├── tests/
-│   └── test_main.py         # Unit tests
+│   ├── test_main.py         # Unit tests
+│   └── __init__.py          # Test package initialization
 ├── requirements.txt         # Python dependencies
 ├── README.md               # This file
 └── SRS.md                 # Service specification
@@ -142,10 +161,12 @@ url-shortner/
 
 ## Notes
 
-- All URLs are stored in memory and will be lost when the service restarts
+- All URLs are stored in MongoDB and persisted across service restarts
 - Maximum URL length: 2048 characters
 - URLs must start with `http://` or `https://`
 - Short codes are randomly generated 6-character alphanumeric strings
+- MongoDB unique index ensures no duplicate short codes
+- Database name: `url_shortener`, Collection name: `urls`
 
 ## License
 

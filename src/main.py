@@ -7,10 +7,11 @@ from typing import Dict
 from urllib.parse import urlparse
 
 from src.utils import generate_short_code
+from src import database
 
 app = FastAPI(
     title="URL Shortener",
-    description="A simple URL shortening service with in-memory storage",
+    description="A simple URL shortening service with MongoDB persistent storage",
     version="1.0.0"
 )
 
@@ -23,8 +24,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage
-url_mapping: Dict[str, str] = {}
+
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    """Initialize MongoDB connection on application startup"""
+    database.connect_to_mongo()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close MongoDB connection on application shutdown"""
+    database.close_mongo_connection()
 
 
 class ShortenRequest(BaseModel):
@@ -74,11 +85,15 @@ def shorten_url(request: ShortenRequest) -> ShortenResponse:
     except Exception:
         raise HTTPException(status_code=400, detail={"error": "invalid_url"})
     
-    # Generate short code using sequential counter with Base62 encoding
-    short_code = generate_short_code()
+    # Generate short code and ensure uniqueness
+    while True:
+        short_code = generate_short_code()
+        if not database.url_exists(short_code):
+            break
     
-    # Store mapping
-    url_mapping[short_code] = url
+    # Store mapping in MongoDB
+    if not database.store_url(short_code, url):
+        raise HTTPException(status_code=500, detail={"error": "failed_to_store_url"})
     
     return ShortenResponse(short_code=short_code, original_url=url)
 
@@ -103,10 +118,11 @@ def redirect_to_url(code: str):
     Raises:
         HTTPException: 404 if code is not found
     """
-    if code not in url_mapping:
+    original_url = database.get_url(code)
+    
+    if not original_url:
         raise HTTPException(status_code=404, detail={"error": "code_not_found"})
     
-    original_url = url_mapping[code]
     return RedirectResponse(url=original_url, status_code=301)
 
 
