@@ -90,7 +90,7 @@ def shorten_url(request: ShortenRequest) -> ShortenResponse:
         short_code = generate_short_code()
         if not database.url_exists(short_code):
             break
-    
+        
     # Store mapping in MongoDB
     if not database.store_url(short_code, url):
         raise HTTPException(status_code=500, detail={"error": "failed_to_store_url"})
@@ -123,7 +123,7 @@ def redirect_to_url(code: str):
     if not original_url:
         raise HTTPException(status_code=404, detail={"error": "code_not_found"})
     
-    return RedirectResponse(url=original_url, status_code=301)
+    return RedirectResponse(url=original_url, status_code=302)
 
 
 if __name__ == "__main__":

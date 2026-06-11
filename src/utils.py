@@ -1,10 +1,38 @@
 """Utility functions for URL shortener service"""
 from urllib.parse import urlparse
+from pathlib import Path
+import os
 
 BASE62_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 # Sequential counter starting at 2,383,280 (10 * 62^3) to generate codes starting with 'a'
-counter = 2383280
+# This module uses a file-backed counter so codes persist across process restarts.
+INITIAL_COUNTER = 2383280
+COUNTER_FILE = Path(__file__).resolve().parent.parent / ".counter"
+
+
+def _load_counter() -> int:
+    """Load the counter from `COUNTER_FILE`. Return `INITIAL_COUNTER` on error or if missing."""
+    try:
+        if COUNTER_FILE.exists():
+            content = COUNTER_FILE.read_text().strip()
+            if content:
+                return int(content)
+    except Exception:
+        # best-effort: ignore errors and fall back to initial value
+        pass
+    return INITIAL_COUNTER
+
+
+def _save_counter(value: int) -> None:
+    """Atomically write the counter value to `COUNTER_FILE`. Best-effort, ignore failures."""
+    try:
+        tmp = COUNTER_FILE.with_suffix(".tmp")
+        tmp.write_text(str(value))
+        tmp.replace(COUNTER_FILE)
+    except Exception:
+        # don't raise — application should continue even if persistence fails
+        pass
 
 
 def validate_url(url: str) -> bool:
@@ -65,7 +93,7 @@ def generate_short_code() -> str:
     Returns:
         A Base62 encoded short code
     """
-    global counter
-    code = encode_base62(counter)
-    counter += 1
+    current = _load_counter()
+    code = encode_base62(current)
+    _save_counter(current + 1)
     return code
